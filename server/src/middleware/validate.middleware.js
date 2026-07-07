@@ -6,7 +6,7 @@ const validate = (schema) => (req, res, next) => {
     });
 
     if(!result.success) {
-        const errors = result.error.errors.map((e) => ({
+        const errors = result.error.issues.map((e) => ({
             field: e.path.slice(1).join('.'),
             message: e.message,
         }));
