@@ -1,42 +1,103 @@
 const Groq = require('groq-sdk');
+const fs = require('fs');
 
-const groq = new Groq({apiKey: process.env.GROQ_API_KEY});
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const generateQuestions = async (jobPosition, jobLevel) => {
-    const prompt = `You are an expert technical interviewer. Generate exactly 6 interview questions for a ${jobLevel}-level ${jobPosition} candidate.
-    Return ONLY a valid JSON array with this exact structure, no extra text:
-    [
-    {
+  const prompt = `You are an expert technical interviewer. Generate exactly 6 interview questions for a ${jobLevel}-level ${jobPosition} candidate.
+
+Return ONLY a valid JSON array with this exact structure, no extra text:
+[
+  {
     "content": "question text here",
     "category": "technical",
     "difficulty": "medium",
     "order_num": 1
-    }
-    ]
-    
-    Rules:
-    - category must be one of: technical, behavioural, situational
-    - difficulty must be one of: easy, medium, hard
-    - For ${jobLevel} level: junior = mostly easy/medium, mid = mostly medium, senior = mostly medium/hard
-    - Mix of: 3 technical, 2 behavioural, 1 situational
-    - order_num must be 1 to 6
-    - Questions must be specific to ${jobPosition} role`;
-    
+  }
+]
+
+Rules:
+- category must be one of: technical, behavioural, situational
+- difficulty must be one of: easy, medium, hard
+- For ${jobLevel} level: junior = mostly easy/medium, mid = mostly medium, senior = mostly medium/hard
+- Mix of: 3 technical, 2 behavioural, 1 situational
+- order_num must be 1 to 6
+- Questions must be specific to ${jobPosition} role`;
+
   const response = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.7,
     max_tokens: 2048,
   });
+
   const raw = response.choices[0].message.content.trim();
   const jsonMatch = raw.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) {
-    throw new Error('AI returned invalid question format');
-  }
+  if (!jsonMatch) throw new Error('AI returned invalid question format');
+
   const questions = JSON.parse(jsonMatch[0]);
   if (!Array.isArray(questions) || questions.length === 0) {
     throw new Error('AI returned empty questions array');
   }
+
   return questions;
 };
-module.exports = { generateQuestions };
+
+const transcribeAudio = async (audioFilePath) => {
+  const transcription = await groq.audio.transcriptions.create({
+    file: fs.createReadStream(audioFilePath),
+    model: 'whisper-large-v3',
+    response_format: 'verbose_json',
+  });
+
+  return transcription.text || '';
+};
+
+const evaluateAnswer = async (questionContent, transcript) => {
+  if (!transcript || transcript.trim().length < 5) {
+    return {
+      score_technical: 0,
+      score_comm: 0,
+      score_grammar: 0,
+      speaking_wpm: 0,
+      ai_feedback: 'No answer provided.',
+    };
+  }
+
+  const prompt = `You are an expert interview evaluator. Evaluate this interview answer.
+
+Question: ${questionContent}
+
+Candidate's Answer: ${transcript}
+
+Return ONLY a valid JSON object with this exact structure, no extra text:
+{
+  "score_technical": 75,
+  "score_comm": 80,
+  "score_grammar": 85,
+  "speaking_wpm": 120,
+  "ai_feedback": "Brief 2-3 sentence feedback here."
+}
+
+Scoring rules:
+- score_technical: 0-100, how accurate and complete is the technical content
+- score_comm: 0-100, clarity, structure, use of examples
+- score_grammar: 0-100, grammatical correctness (100 = perfect)
+- speaking_wpm: estimate words per minute based on transcript length (assume 60 second answer)
+- ai_feedback: constructive 2-3 sentence feedback in English`;
+
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.3,
+    max_tokens: 512,
+  });
+
+  const raw = response.choices[0].message.content.trim();
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('AI returned invalid evaluation format');
+
+  return JSON.parse(jsonMatch[0]);
+};
+
+module.exports = { generateQuestions, transcribeAudio, evaluateAnswer };
