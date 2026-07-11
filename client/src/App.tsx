@@ -1,18 +1,18 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import ProtectedRoute from '@/components/layout/ProtectedRoute'
+import LoginPage from '@/pages/LoginPage'
+import RegisterPage from '@/pages/RegisterPage'
 
 function App() {
   return (
     <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<div className="p-8 text-2xl font-bold">Dashboard — Coming Soon</div>} />
+      </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
-      {/* Auth routes */}
-      {/* <Route path="/login" element={<LoginPage />} /> */}
-      {/* <Route path="/register" element={<RegisterPage />} /> */}
-      {/* Protected routes */}
-      {/* <Route path="/dashboard" element={<DashboardPage />} /> */}
-      {/* <Route path="/interview/setup" element={<InterviewSetupPage />} /> */}
-      {/* <Route path="/interview/:id" element={<InterviewPage />} /> */}
-      {/* <Route path="/report/:id" element={<ReportPage />} /> */}
-      <Route path="*" element={<div className="flex items-center justify-center min-h-screen text-gray-500">Page not found</div>} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
 }
