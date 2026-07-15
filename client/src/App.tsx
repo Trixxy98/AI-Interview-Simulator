@@ -4,6 +4,7 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import DashboardPage from '@/pages/DashboardPage'
 import InterviewSetupPage from '@/pages/InterviewSetupPage'
+import InterviewPage from '@/pages/InterviewPage'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/interview/setup" element={<InterviewSetupPage />} />
+        <Route path="/interview/:id" element={<InterviewPage />} />
       </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
