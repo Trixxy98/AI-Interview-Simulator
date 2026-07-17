@@ -49,6 +49,7 @@ app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/interviews', require('./routes/interview.routes'));
 app.use('/api/reports', require('./routes/report.routes'));
 app.use('/api/users', require('./routes/user.routes'));
+app.use('/api/camera-analysis', require('./routes/camera.routes'));
 // app.use('/api/resumes', require('./routes/resume.routes'));
 // app.use('/api/ai', require('./routes/ai.routes'));
 
