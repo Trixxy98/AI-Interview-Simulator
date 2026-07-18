@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react'
+import { useEffect, useState } from 'react'
 
 const useHeadPose = (landmarks: any[]) => {
     const [headPoseScore, setHeadPoseScore] = useState(100)
