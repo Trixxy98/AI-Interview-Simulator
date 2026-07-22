@@ -13,7 +13,12 @@ const useMediaPipe = (videoRef: React.RefObject<HTMLVideoElement | null>, isRead
 
     const loadFaceMesh = async () => {
       try {
-        const { FaceMesh } = await import('@mediapipe/face_mesh')
+        const FaceMesh = (window as any).FaceMesh
+        if (!FaceMesh) {
+          // Retry after 1s if script not loaded yet
+          setTimeout(loadFaceMesh, 1000)
+          return
+        }
 
         const faceMesh = new FaceMesh({
           locateFile: (file: string) =>
