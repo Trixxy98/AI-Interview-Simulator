@@ -1,6 +1,7 @@
 const Answer = require('../models/answer.model');
 const Report = require('../models/report.model');
 const Interview = require('../models/interview.model');
+const CameraAnalysis = require('../models/cameraAnalysis.model');
 const { evaluateAnswer } = require('./ai.service');
 const Groq = require('groq-sdk');
 
@@ -44,11 +45,16 @@ const generateReport = async (interviewId) => {
   const score_grammar = Math.round(avg(answers.map((a) => a.score_grammar)));
   const score_speed = Math.round(avg(answers.map((a) => a.speaking_wpm > 0 ? Math.min(100, (a.speaking_wpm / 150) * 100) : 0)));
 
-  // Confidence derived from communication + technical average
-  const score_confidence = Math.round((score_communication + score_technical) / 2);
+  const cameraAnalysis = await CameraAnalysis.findOne({ interview_id: interviewId });
+  const eye_contact_pct = cameraAnalysis?.eye_contact_pct ?? 70;
+  const head_pose_score = cameraAnalysis?.head_pose_score ?? 70;
 
-  // Eye contact placeholder — will be filled from camera analysis in Phase 2
-  const score_eye_contact = 70;
+  // Confidence = blend of communication, technical depth, and head stability
+  const score_confidence = Math.round(
+    score_communication * 0.4 + score_technical * 0.4 + head_pose_score * 0.2
+  );
+
+  const score_eye_contact = Math.round(eye_contact_pct);
 
   const score_total = Math.round(
     score_technical * 0.35 +
