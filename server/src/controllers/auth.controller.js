@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
+const { blacklistToken, isTokenBlacklisted } = require('../config/redis');
 
 const COOKIE_OPTIONS = {
     httpOnly: true,
@@ -78,28 +79,49 @@ const login = async (req, res, next) => {
 };
 
 const refresh = async (req, res, next) => {
-    try {
-      const token = req.cookies?.refreshToken;
-      if (!token) {
-        return res.status(401).json({ error: 'Refresh token not found' });
-      }
-      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-      const user = await User.findById(decoded._id);
-      if (!user) {
-        return res.status(401).json({ error: 'User not found' });
-      }
-      const { accessToken, refreshToken } = generateTokens(user);
-      res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
-      res.json({ accessToken });
-    } catch (err) {
-      if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-        return res.status(403).json({ error: 'Invalid or expired refresh token' });
-      }
-      next(err);
+  try {
+    const token = req.cookies?.refreshToken;
+    if (!token) {
+      return res.status(401).json({ error: 'Refresh token not found' });
     }
-  };
-  const logout = async (req, res) => {
-    res.clearCookie('refreshToken', COOKIE_OPTIONS);
-    res.json({ message: 'Logged out successfully' });
-  };
-  module.exports = { register, login, refresh, logout };
+
+    const blacklisted = await isTokenBlacklisted(token);
+    if (blacklisted) {
+      return res.status(403).json({ error: 'Token has been revoked' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const user = await User.findById(decoded._id);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    // Rotate: blacklist the consumed token before issuing a new one
+    const remainingTtl = decoded.exp - Math.floor(Date.now() / 1000);
+    await blacklistToken(token, remainingTtl);
+
+    const { accessToken, refreshToken } = generateTokens(user);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    res.json({ accessToken });
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(403).json({ error: 'Invalid or expired refresh token' });
+    }
+    next(err);
+  }
+};
+
+const logout = async (req, res) => {
+  const token = req.cookies?.refreshToken;
+  if (token) {
+    const decoded = jwt.decode(token);
+    if (decoded?.exp) {
+      const remainingTtl = decoded.exp - Math.floor(Date.now() / 1000);
+      await blacklistToken(token, remainingTtl);
+    }
+  }
+  res.clearCookie('refreshToken', COOKIE_OPTIONS);
+  res.json({ message: 'Logged out successfully' });
+};
+
+module.exports = { register, login, refresh, logout };
