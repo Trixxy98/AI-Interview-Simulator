@@ -5,7 +5,7 @@ const verifyToken = (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        return res.status(401).json({error: 'Acess token required'});
+        return res.status(401).json({error: 'Access token required'});
     }
 
     try {
@@ -27,7 +27,7 @@ const requireRole = (roles) => (req, res, next) =>{
 const resourceOwner = (getResourceUserId) => async (req,res,next) => {
     try {
         const resourceUserId = await getResourceUserId(req);
-        if (String(resourceUserId) !== String(req.user?.id)){
+        if (String(resourceUserId) !== String(req.user?._id)){
             return res.status(403).json({error: 'Forbidden: not resource owner'});
         }
         next();
