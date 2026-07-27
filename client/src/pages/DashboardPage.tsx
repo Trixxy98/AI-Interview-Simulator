@@ -161,7 +161,10 @@ const DashboardPage = () => {
                           </span>
                         )}
                         <button
-                          onClick={() => navigate(`/interview/${iv._id}`)}
+                          onClick={() => iv.status === 'done' && iv.report_id
+                            ? navigate(`/report/${iv.report_id}`)
+                            : navigate(`/interview/${iv._id}`)
+                          }
                           className="text-sm text-violet-600 font-medium hover:underline"
                         >
                           {iv.status === 'done' ? 'View Report' : 'Continue'}
