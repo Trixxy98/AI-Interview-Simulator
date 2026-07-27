@@ -1,6 +1,7 @@
 const Interview = require('../models/interview.model');
 const Question = require('../models/question.model');
 const {generateQuestions} = require('../services/ai.service');
+const Report = require('../models/report.model');
 
 const startInterview = async (req, res, next) => {
     try {
@@ -73,18 +74,33 @@ const getInterviewHistory = async (req, res, next) => {
             Interview.countDocuments({user_id: req.user._id}),
         ]);
 
+        const doneIds = interviews
+        .filter((iv) => iv.status === 'done')
+        .map((iv) => iv._id);
+
+        const reports = await Report.find({interview_id: {$in: doneIds}}, 'interview_id');
+
+        const reportMap = new Map(
+            reports.map((r) => [String(r.interview_id), String(r._id)])
+        );
+
+        const result = interviews.map((iv) => ({
+            ...iv.toObject(),
+            report_id: reportMap.get(String(iv._id)) ?? null,
+        }));
+
         res.json({
-            interviews,
+            interviews: result,
             pagination: {
                 page,
                 limit,
                 total,
-                totalPages: Math.ceil(total/ limit),
+                totalPages: Math.ceil(total/limit),
             },
-        })
+        });
     }catch (err) {
         next(err);
     }
-};
+}
 
 module.exports = {startInterview, getInterview, getInterviewHistory};

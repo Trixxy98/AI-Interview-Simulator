@@ -6,6 +6,7 @@ const { verifyToken } = require('../middleware/auth.middleware');
 router.use(verifyToken);
 
 router.post('/interviews/:id/report', createReport);
+router.get('/analytics', getAnalytics);
 router.get('/:id', getReport);
 
 module.exports = router;
