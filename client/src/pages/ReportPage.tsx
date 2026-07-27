@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { Trophy, ArrowLeft, RotateCcw } from 'lucide-react'
 import useReport from '@/hooks/data/useReport'
+import useAnswers from '@/hooks/data/useAnswers'
 
 const SCORE_DIMENSIONS = [
   { key: 'score_technical', label: 'Technical Knowledge', weight: '35%', color: 'bg-violet-500' },
@@ -40,6 +41,8 @@ const ReportPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: report, isLoading } = useReport(id!)
+  const interviewId = (report?.interview_id as any)?._id ?? ''
+  const {data: answers = []} = useAnswers(interviewId)
 
   if (isLoading) {
     return (
@@ -127,6 +130,46 @@ const ReportPage = () => {
             <p className="text-gray-600 leading-relaxed whitespace-pre-line">{report.summary}</p>
           </div>
         )}
+
+        {/* Per-Question Breakdown */}
+          {answers.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+              <h2 className="text-lg font-semibold text-gray-900">Answer Breakdown</h2>
+              {[...answers]
+                .sort((a, b) => a.question_id.order_num - b.question_id.order_num)
+                .map((answer, i) => (
+                  <div key={answer._id} className="border border-gray-100 rounded-xl p-5 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 bg-violet-100 text-violet-700 rounded-full text-xs font-bold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <span className="text-xs font-semibold capitalize px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                        {answer.question_id.category}
+                      </span>
+                      <span className="text-xs text-gray-400 capitalize">{answer.question_id.difficulty}</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-800">{answer.question_id.content}</p>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-400 mb-1">Your Answer</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {answer.transcript || <span className="italic text-gray-400">No answer provided</span>}
+                      </p>
+                    </div>
+                    {answer.ai_feedback && (
+                      <div className="bg-violet-50 rounded-lg p-3">
+                        <p className="text-xs text-violet-500 font-medium mb-1">AI Feedback</p>
+                        <p className="text-sm text-violet-800 leading-relaxed">{answer.ai_feedback}</p>
+                      </div>
+                    )}
+                    <div className="flex gap-4 text-xs text-gray-500">
+                      <span>Technical <span className="font-semibold text-gray-700">{answer.score_technical}/100</span></span>
+                      <span>Communication <span className="font-semibold text-gray-700">{answer.score_comm}/100</span></span>
+                      <span>Grammar <span className="font-semibold text-gray-700">{answer.score_grammar}/100</span></span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
 
         {/* CTA */}
         <div className="flex gap-3">
