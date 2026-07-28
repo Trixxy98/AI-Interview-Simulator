@@ -8,13 +8,14 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 
 const connectDB = require('./config/db');
+const {verifyRedis} = require('./config/redis');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Connect to database
 connectDB();
-
+verifyRedis();
 // Security middleware
 app.use(helmet());
 app.use(cors({

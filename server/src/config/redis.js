@@ -2,15 +2,26 @@ const Redis = require('ioredis');
 const crypto = require('crypto');
 
 const redis = new Redis(process.env.REDIS_URL, {
-  lazyConnect: true,
-  retryStrategy: (times) => {
-    if (times > 3) return null;
-    return Math.min(times * 200, 2000);
-  },
+  retryStrategy: (times) => Math.min(times * 200, 5000),
+  maxRetriesPerRequest: 2,
+  enableOfflineQueue: false,
+  connectTimeout: 5000,
 });
 
 redis.on('connect', () => console.log('Redis connected'));
 redis.on('error', (err) => console.error('Redis error:', err.message));
+
+const verifyRedis = async () => {
+  try {
+    await redis.ping();
+    console.log('Redis PING ok - token blacklist active');
+    return true;
+  }catch (err) {
+    console.error('WARNING: Redis unreachable: ', err.message);
+    console.error('WARNING: Token blacklist DISABLED - logout will not revoke tokens');
+    return false;
+  }
+};
 
 const hashToken = (token) =>
   crypto.createHash('sha256').update(token).digest('hex');
@@ -45,5 +56,6 @@ const isTokenBlacklisted = async (token) => {
 };
 
 module.exports = redis;
+module.exports.verifyRedis = verifyRedis;
 module.exports.blacklistToken = blacklistToken;
 module.exports.isTokenBlacklisted = isTokenBlacklisted;
