@@ -5,6 +5,7 @@ import useRefreshToken from './useRefreshToken'
 
 const useAxiosPrivate = () => {
   const accessToken = useAuthStore((s) => s.accessToken)
+  const logout = useAuthStore((s) => s.logout)
   const refresh = useRefreshToken()
 
   useEffect(() => {
@@ -21,9 +22,14 @@ const useAxiosPrivate = () => {
         const prev = err?.config
         if (err?.response?.status === 401 && !prev?._retry) {
           prev._retry = true
+          try {
           const newToken = await refresh()
           prev.headers['Authorization'] = `Bearer ${newToken}`
           return axiosPrivate(prev)
+          }catch (refreshErr){
+            logout()
+            return Promise.reject(refreshErr)
+          }
         }
         return Promise.reject(err)
       }
@@ -33,7 +39,7 @@ const useAxiosPrivate = () => {
       axiosPrivate.interceptors.request.eject(reqInterceptor)
       axiosPrivate.interceptors.response.eject(resInterceptor)
     }
-  }, [accessToken, refresh])
+  }, [accessToken, refresh, logout])
 
   return axiosPrivate
 }
